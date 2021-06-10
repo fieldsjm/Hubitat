@@ -41,6 +41,7 @@ metadata {
         attribute "status", "string"
         attribute "APIstatus", "string"
         attribute "RoombaTile", "string"
+        attribute "LastStart", "string"
         
     }
 }
@@ -107,8 +108,11 @@ def off() {
 
 //Commands
 def start() {
+    def date = new Date()
+    def sdf = new SimpleDateFormat("MM/dd/yyyy hh:mm:ss aa")
     sendEvent(name: "status", value: "starting")
     sendEvent(name: 'switch', value: 'on') 
+    sendEvent(name: "LastStart", value: sdf.format(date), isStateChange: true)
     runIn(15, poll)
 	local_start()
 }
@@ -315,7 +319,7 @@ def roomba_tile(roomba_value, num_mins_running, current_charge) {
             msg=roomba_value
             break
     }
-    img = "https://raw.githubusercontent.com/PrayerfulDrop/fieldsjm/master/Roomba/support/${img}"
+    img = "https://raw.githubusercontent.com/fieldsjm/Hubitat/master/Roomba/support/${img}"
     html = "<center><img width=70px height=70px vspace=5px src=${img}><br><font style='font-size:13px'>"
         if(roomba_value.contains("Docking") || roomba_value.contains("Cleaning")) html +="${msg} - ${num_mins_running}min<br>Battery: ${current_charge}%"
         else html+="${msg}<br>Battery: ${current_charge}%"
@@ -323,3 +327,5 @@ def roomba_tile(roomba_value, num_mins_running, current_charge) {
     sendEvent(name: "RoombaTile", value: html, displayed: true)
     if(logEnable) log.debug "Roomba Status of '${msg}' sent to dashboard"
 }
+
+import java.text.SimpleDateFormat
