@@ -38,6 +38,7 @@ metadata {
         attribute "preferences_set", "string"
         attribute "status", "string"
         attribute "APIstatus", "string"
+        attribute "RoombaTile", "string"
         
     }
 }
@@ -224,6 +225,7 @@ void local_poll_cbk(data) {
         def bin_present = bin.present
     
     def roomba_value = new_status(readyCode, current_phase, current_charge)
+    def roombaTile = roomba_tile(roomba_value, num_mins_running, current_charge)
     
     if (debugOutput) log.debug("Robot updates -- ${roomba_value}")
     
@@ -281,4 +283,41 @@ private local_dock() {
 def logsOff(){
     log.warn "debug logging disabled..."
     device.updateSetting("debugOutput",[value:"false",type:"bool"])
+}
+
+def roomba_tile(roomba_value, num_mins_running, current_charge) {
+    def img = ""
+    switch(roomba_value) {
+        case "Cleaning":
+            img = "roomba-clean.png"
+            msg=roomba_value
+            break
+        case "Stopped":
+            img = "roomba-stop.png"
+            msg=roomba_value
+            break        
+        case  ~/.*Docked.*/:
+            img = "roomba-charge.png"
+	    msg=roomba_value
+            break        
+        case "Docking":
+            img = "roombadock.png"
+            msg=roomba_value
+            break
+        case  ~/.*battery.*/:
+            img = "roomba-dead.png"
+            msg=roomba_value
+            break
+        default:
+            img = "roomba-error.png"
+            msg=roomba_value
+            break
+    }
+    img = "https://raw.githubusercontent.com/PrayerfulDrop/fieldsjm/master/Roomba/support/${img}"
+    html = "<center><img width=70px height=70px vspace=5px src=${img}><br><font style='font-size:13px'>"
+        if(roomba_value.contains("Docking") || roomba_value.contains("Cleaning")) html +="${msg} - ${num_mins_running}min<br>Battery: ${current_charge}%"
+        else html+="${msg}<br>Battery: ${current_charge}%"
+    html += "</font></center>"
+    sendEvent(name: "RoombaTile", value: html, displayed: true)
+    if(logEnable) log.debug "Roomba Status of '${msg}' sent to dashboard"
 }
