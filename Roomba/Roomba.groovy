@@ -48,7 +48,7 @@ metadata {
 //Preferences
 preferences {
         input "roomba_host", "string", title:"IP of Roomba local REST Gateway", displayDuringSetup: true
-        input "roomba_port", "number", range: "1..65535", defaultValue: 3000, title:"IP of Roomba local REST Gateway", displayDuringSetup: true
+        input "roomba_port", "number", range: "1..65535", defaultValue: 3000, title:"Port of Roomba local REST Gateway", displayDuringSetup: true
         input "pollInterval", "number", title: "Polling Interval", description: "Change polling frequency (in seconds [60-600])", defaultValue:240, range: "60..600", required: true, displayDuringSetup: true
         input name: "debugOutput", type: "bool", title: "Enable debug logging", defaultValue: true    
 }
