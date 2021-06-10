@@ -55,7 +55,7 @@ WantedBy=multi-user.target
 <p><b>Note:</b> If you would like to control multiple Roomba devices from a single RPi then you just need to follow the above steps but create and change the folder name Rest980 to Rest980-1 and change the PORT Rest980 listens on to something other than 3000.  Also change the name of the service filename roomba.service to something like roomba1.service</p>  
 <b>Install Hubitat Driver:</b>
 <ul>
-      <li>Copy Roomba-driver.groovy RAW URL: https://raw.githubusercontent.com/fieldsjm/Hubitat/master/Roomba/Roomba.groovy
+      <li>Copy Roomba.groovy RAW URL: https://raw.githubusercontent.com/fieldsjm/Hubitat/master/Roomba/Roomba.groovy
       <li>In your Hubitat Administrative Console select Drivers Code</li>
       <li>Click New Driver in upper right corner</li>
       <li>Click Import</li>
