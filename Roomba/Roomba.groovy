@@ -34,8 +34,8 @@ metadata {
         command "pause"
         command "cancel"
 
-
         attribute "robotName", "string"
+        attribute "consumableStatus", "ENUM",["Missing","Full","Ready"]
         attribute "runtimeMins", "number"
         attribute "preferences_set", "string"
         attribute "status", "string"
@@ -109,7 +109,7 @@ def off() {
 //Commands
 def start() {
     def date = new Date()
-    def sdf = new SimpleDateFormat("MM/dd/yyyy hh:mm:ss aa")
+    def sdf = new SimpleDateFormat("MM/dd/yyyy hh:mm aa")
     sendEvent(name: "status", value: "starting")
     sendEvent(name: 'switch', value: 'on') 
     sendEvent(name: "LastStart", value: sdf.format(date), isStateChange: true)
@@ -191,7 +191,11 @@ def new_status(readyCode, current_phase, current_charge) {
         } else if (readyCode == 3) {
             return "Stuck. Move robot to continue."
         } else if (readyCode == 15) {
-            return "Low Battery. Place robot on charger."
+            if (current_phase == "charge") {
+                return "Low Battery. Docked/Charging."
+            } else {
+                return "Low Battery. Place robot on charger."
+            }
         } else if (readyCode == 6) {
             return "Extractors jammed. Clear to continue."
         } else {
@@ -236,7 +240,7 @@ void local_poll_cbk(data) {
     if (debugOutput) log.debug("Robot updates -- ${roomba_value}")
     
     //Set the state object
-    if(roomba_value == "cleaning") {
+    if(roomba_value == "Cleaning") {
         state.switch = "on"
     } else {
         state.switch = "off"
@@ -246,18 +250,18 @@ void local_poll_cbk(data) {
     if(bin_present == false) {
         state.consumable = "Missing"
     } else if(bin_full == true){
-        state.consumable = "Full - Empty Now"
+        state.consumable = "Full"
     } else {
         state.consumable = "Ready"
     }
-
+    
     /*send events, display final event*/
     sendEvent(name: "robotName", value: robotName, displayed: false)
     sendEvent(name: "runtimeMins", value: num_mins_running, displayed: false)
     sendEvent(name: "battery", value: current_charge, displayed: false)
+    sendEvent(name: "consumableStatus", value: state.consumable)
     sendEvent(name: "status", value: roomba_value)
     sendEvent(name: "switch", value: state.switch)
-    sendEvent(name: "consumable", value: state.consumable)
     sendEvent(name: "APIstatus", value: APIstatus, displayed: false)
 }
 
@@ -321,8 +325,8 @@ def roomba_tile(roomba_value, num_mins_running, current_charge) {
     }
     img = "https://raw.githubusercontent.com/fieldsjm/Hubitat/master/Roomba/support/${img}"
     html = "<center><img width=70px height=70px vspace=5px src=${img}><br><font style='font-size:13px'>"
-        if(roomba_value.contains("Docking") || roomba_value.contains("Cleaning")) html +="${msg} - ${num_mins_running}min<br>Battery: ${current_charge}%"
-        else html+="${msg}<br>Battery: ${current_charge}%"
+        if(roomba_value.contains("Docking") || roomba_value.contains("Cleaning")) html +="${msg} - ${num_mins_running} min<br>Battery: ${current_charge}%"
+    else html+="${msg}<br>Battery: ${current_charge}%<br>Bin: ${consumableStatus}"
     html += "</font></center>"
     sendEvent(name: "RoombaTile", value: html, displayed: true)
     if(logEnable) log.debug "Roomba Status of '${msg}' sent to dashboard"
