@@ -1,7 +1,7 @@
 /*
  * Virtual Television Device (WebCore Data)
  *
- *  https://raw.githubusercontent.com/ogiewon/Hubitat/master/Drivers/virtual-presence-switch.src/virtual-presence-switch.groovy
+ *  https://raw.githubusercontent.com/fieldsjm/Hubitat/master/samsung_tv/virtual_TV_device.groovy
  *
  *  Copyright 2018 Daniel Ogorchock
  *
@@ -18,7 +18,7 @@
  */
 
 metadata {
-    definition (name: "Virtual Television Data", namespace: "ogiewon", author: "Daniel Ogorchock", importUrl: "https://raw.githubusercontent.com/ogiewon/Hubitat/master/Drivers/virtual-presence-switch.src/virtual-presence-switch.groovy") {
+    definition (name: "Virtual Television Data", namespace: "fieldsjm", author: "Jonathan Fields", importUrl: "https://raw.githubusercontent.com/fieldsjm/Hubitat/master/samsung_tv/virtual_TV_device.groovy") {
         capability "Actuator"
         capability "Switch"
 		
@@ -95,4 +95,3 @@ def tv_Tile () {
     html = "<center><img width=70px height=70px vspace=5px src=${img}><br><font style='font-size:13px'>"${msg}"</font></center>"
     sendEvent(name: "tvTile", value: html, displayed: true)
 }
-        
