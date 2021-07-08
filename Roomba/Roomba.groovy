@@ -35,7 +35,7 @@ metadata {
         command "cancel"
 
         attribute "robotName", "string"
-        attribute "consumableStatus", "ENUM",["Missing","Full","Ready"]
+        attribute "consumableStatus", "ENUM",["Missing","Full","OK"]
         attribute "runtimeMins", "string"
         attribute "preferences_set", "string"
         attribute "status", "string"
@@ -175,10 +175,15 @@ private local_get(path, cbk) {
         httpGet([uri: "http://$roomba_host:$roomba_port$path"]){ resp -> 
             if (debugOutput) log.debug "Response ${resp.data}"
             "$cbk"(resp.data)
-            sendEvent(name: "APIstatus", value: "Online", displayed: false)
+            if (resp.data) {
+                sendEvent(name: "APIstatus", value: "Online", displayed: false)
+            } else {
+                sendEvent(name: "APIstatus", value: "Rest980 Connected - Data Update Failed", displayed: false)        
+            }
         }
     } catch (e) {
-        if (debugOutput) log.debug "Device Unresponsive - Check Rest980 | Robot"
+        def roomba_value = "Offline"
+        def roombaTile = roomba_tile(roomba_value)
         sendEvent(name: "APIstatus", value: "Device Unresponsive - Check Rest980 | Robot", displayed: false)
     }
 }
@@ -201,7 +206,7 @@ def new_status(readyCode, current_phase, current_charge) {
         } else if (readyCode == 6) {
             return "Extractors jammed. Clear to continue."
         } else {
-            return "Not Ready. See iRobot app for details."
+            return "Not Ready. See iRobot app."
         }
     } else if (current_phase == "charge") {
 		if (current_charge == 100) {
@@ -216,7 +221,7 @@ def new_status(readyCode, current_phase, current_charge) {
 	} else if(current_phase == "run") {
         	return "Cleaning"
 	} else {
-		return "Unknown Error. See iRobot app for details."
+		return "Unknown Error. See iRobot app."
 	}
 }
 
@@ -225,6 +230,7 @@ void local_dummy_cbk(data) {
 
 void local_poll_cbk(data) {
     def current_charge = data.batPct
+        state.battery = current_charge
     def robotName = data.name
 	    state.robotName = robotName    
     def mission = data.cleanMissionStatus
@@ -241,11 +247,11 @@ void local_poll_cbk(data) {
         def duration = Math.round(((current/1000) - startTime)/60)
         state.duration = duration
     } else {
-        state.duration = device.latestValue(state.duration)   
+        state.duration = 0   
     }
     
     def roomba_value = new_status(readyCode, current_phase, current_charge)
-    def roombaTile = roomba_tile(roomba_value, current_charge)
+    def roombaTile = roomba_tile(roomba_value)
     
     if (debugOutput) log.debug("Robot updates -- ${roomba_value}")
     
@@ -262,7 +268,7 @@ void local_poll_cbk(data) {
     } else if(bin_full == true){
         state.consumable = "Full"
     } else {
-        state.consumable = "Ready"
+        state.consumable = "OK"
     }
     
     /*send events, display final event*/
@@ -304,7 +310,7 @@ def logsOff(){
     device.updateSetting("debugOutput",[value:"false",type:"bool"])
 }
 
-def roomba_tile(roomba_value, current_charge) {
+def roomba_tile(roomba_value) {
     def img = ""
     switch(roomba_value) {
         case "Cleaning":
@@ -327,16 +333,23 @@ def roomba_tile(roomba_value, current_charge) {
             img = "roomba-dead.png"
             msg=roomba_value
             break
+        case  "Offline":
+            img = "roomba-offline.png"
+            msg=roomba_value
+            break
         default:
             img = "roomba-error.png"
             msg=roomba_value
             break
     }
+    def f1 = "font style='font-size:13px'"
+    def f2 = "font style='font-size:10px'"
     img = "https://raw.githubusercontent.com/fieldsjm/Hubitat/master/Roomba/support/${img}"
-    html = "<center><img width=70px height=70px vspace=5px src=${img}><br><font style='font-size:13px'>"
-        if(roomba_value.contains("Docking") || roomba_value.contains("Cleaning")) html +="${msg} - ${state.duration} min<br>Battery: ${current_charge}%"
-    else html+="${msg}<br>Battery: ${current_charge}%<br>Bin: ${state.consumable}"
-    html += "</font></center>"
+    html = "<center><img width=70px height=70px vspace=5px src=${img}><p ${f1}>${msg}"
+    if(roomba_value.contains("Offline")) html += "</center>"
+    else if(roomba_value.contains("Docking") || roomba_value.contains("Cleaning")) html +=" - ${state.duration} min<p ${f1}>Battery: ${current_charge}%</center>"
+        else html +="<p ${f1}>Battery: ${state.battery}%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Bin: ${state.consumable}</center>"
+    
     sendEvent(name: "RoombaTile", value: html, displayed: true)
     if(logEnable) log.debug "Roomba Status of '${msg}' sent to dashboard"
 }
