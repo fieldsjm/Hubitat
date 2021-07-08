@@ -182,9 +182,10 @@ private local_get(path, cbk) {
             }
         }
     } catch (e) {
-        def roomba_value = "Offline"
-        def roombaTile = roomba_tile(roomba_value)
-        sendEvent(name: "APIstatus", value: "Device Unresponsive - Check Rest980 | Robot", displayed: false)
+	    def roomba_value = "Offline"
+	    def roombaTile = roomba_tile(roomba_value)
+	    sendEvent(name: "APIstatus", value: "Device Unresponsive - Check Rest980 | Robot", displayed: false)
+	    if (debugOutput) log.debug e
     }
 }
 
