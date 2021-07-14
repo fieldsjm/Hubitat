@@ -182,10 +182,16 @@ private local_get(path, cbk) {
             }
         }
     } catch (e) {
-	    def roomba_value = "Offline"
-	    def roombaTile = roomba_tile(roomba_value)
-	    sendEvent(name: "APIstatus", value: "Device Unresponsive - Check Rest980 | Robot", displayed: false)
-	    if (debugOutput) log.debug e
+        log.debug e
+        if (state.battery < 15) {
+            def roomba_value = "Offline - Low Battery"
+            def roombaTile = roomba_tile(roomba_value)
+        } else {
+            def roomba_value = "Offline"
+            def roombaTile = roomba_tile(roomba_value)
+        }
+        
+        sendEvent(name: "APIstatus", value: "Device Unresponsive - Check Rest980 | Robot", displayed: false)
     }
 }
 
@@ -348,7 +354,7 @@ def roomba_tile(roomba_value) {
     img = "https://raw.githubusercontent.com/fieldsjm/Hubitat/master/Roomba/support/${img}"
     html = "<center><img width=70px height=70px vspace=5px src=${img}><p ${f1}>${msg}"
     if(roomba_value.contains("Offline")) html += "</center>"
-    else if(roomba_value.contains("Docking") || roomba_value.contains("Cleaning")) html +=" - ${state.duration} min<p ${f1}>Battery: ${current_charge}%</center>"
+    else if(roomba_value.contains("Docking") || roomba_value.contains("Cleaning")) html +=" - ${state.duration} min<p ${f1}>Battery: ${state.battery}%</center>"
         else html +="<p ${f1}>Battery: ${state.battery}%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Bin: ${state.consumable}</center>"
     
     sendEvent(name: "RoombaTile", value: html, displayed: true)
