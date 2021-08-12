@@ -1,7 +1,7 @@
 /*
  * Virtual Motion with Switch (Independent)
  *
- *  https://raw.githubusercontent.com/ogiewon/Hubitat/master/Drivers/virtual-presence-switch.src/virtual-presence-switch.groovy
+ *  https://raw.githubusercontent.com/fieldsjm/Hubitat/master/virtual-motion-switch.groovy
  *
  *  Copyright 2021 Jonathan Fields
  *
@@ -16,7 +16,7 @@
  */
 
 metadata {
-    definition (name: "Virtual Motion with Switch", namespace: "fieldsjm", author: "Jonathan Fields", importUrl: "") {
+    definition (name: "Virtual Motion with Switch", namespace: "fieldsjm", author: "Jonathan Fields", importUrl: "https://raw.githubusercontent.com/fieldsjm/Hubitat/master/virtual-motion-switch.groovy") {
         capability "Sensor"
         capability "Motion"
         capability "Switch"
