@@ -18,7 +18,7 @@
 metadata {
     definition (name: "Virtual Motion with Switch", namespace: "fieldsjm", author: "Jonathan Fields", importUrl: "https://raw.githubusercontent.com/fieldsjm/Hubitat/master/virtual-motion-switch.groovy") {
         capability "Sensor"
-        capability "Motion"
+        capability "Motion Sensor"
         capability "Switch"
 		
         command "active"
