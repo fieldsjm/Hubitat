@@ -2,8 +2,8 @@
 *. 800/900 series - Virtual Switch
 *
 *  Copyright 2016 Steve-Gregory
-*  Modified by Adrian Caramaliu to add support for v2 local API
-*  Modified by Jonathan Fields local API only for HE
+*  V2 - Modified by Adrian Caramaliu to add support for v2 local API
+*  V3 - Modified by Jonathan Fields local API only for HE
 *
 *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
 *  in compliance with the License. You may obtain a copy of the License at:
@@ -25,7 +25,6 @@ metadata {
         capability "Refresh"
         capability "Polling"
         capability "Consumable"
-        capability "Configuration"
 
         command "start"
         command "stop"
@@ -50,16 +49,24 @@ metadata {
 preferences {
         input "roomba_host", "string", title:"IP of Roomba local REST Gateway", displayDuringSetup: true
         input "roomba_port", "number", range: "1..65535", defaultValue: 3000, title:"Port of Roomba local REST Gateway", displayDuringSetup: true
-        input "pollInterval", "number", title: "Polling Interval", description: "Change polling frequency (in seconds [60-600])", defaultValue:240, range: "60..600", required: true, displayDuringSetup: true
-        input name: "debugOutput", type: "bool", title: "Enable debug logging", defaultValue: true    
+        input "pollInterval", "number", title: "Polling Interval", description: "Change polling frequency (in min [1-10])", defaultValue:5, range: "1..10", required: true, displayDuringSetup: true
+        input "debugOutput", "bool", title: "Enable debug logging", defaultValue: true
+        input "infoOutput", "bool", title: "Enable info logging", defaultValue: true 
 }
 
 // Settings updated
 def updated() {
-    unschedule()
-    initialize()
-    if (debugOutput) runIn(1800,logsOff) //disable debug logs after 30 min
-	log.trace "Msg: updated ran"
+    if (state.configured) {
+        unschedule()
+        if (debugOutput) runIn(1800,debugLogsOff) //disable debug logs after 30 min
+        if (infoOutput) runIn(1800,infoLogsOff) //disable debug logs after 30 min
+        logging("Updated...","warn")
+        logging("Debug Logging will disable in 30 minutes","warn")
+        logging("Info Logging will disable in 30 minutes","warn")
+        poll()
+    } else {
+        initialize()
+    }
 }
 
 //Installed
@@ -67,25 +74,25 @@ def installed() {
 	initialize()
 }
 
-// Configuration
-def configure() {
-    log.debug "Configuring.."
-    poll()
-}
-
 def initialize() {
-    poll()
     sendEvent(name: 'switch', value: 'off')
+    if (!roomba_host || !roomba_port) {
+        logging("IP or Port is Missing","warn")
+        state.configured = false
+    } else {
+        state.configured = true
+    }
+    updated()
 }
 
 //Refresh
 def refresh() {
-    log.debug "Executing 'refresh'"
+    logging("Executing 'refresh'","info")
     return poll()
 }
 //Polling
 def poll() {
-    //log.debug "Polling for status ----"
+    logging("Polling for status ----","info")
     local_poll()
 }
 
@@ -94,12 +101,13 @@ def on() {
     // Always start roomba
     def status = device.latestValue("status")
     sendEvent(name: 'switch', value: 'on') 
-    if(status == "paused") {
+    if(status == "Paused") {
 	    return resume()
     } else {
 	    return start()
     }
 }
+
 def off() {
     // Always return to dock..
     sendEvent(name: 'switch', value: 'off') 
@@ -116,17 +124,20 @@ def start() {
     sendEvent(name: "LastStart", value: sdf.format(date), isStateChange: true)
     runIn(15, poll)
 	local_start()
+    logging("Starting","info")
 }
 def stop() {
     sendEvent(name: "status", value: "stopping")
     sendEvent(name: 'switch', value: 'off') 
     runIn(15, poll)
     local_stop()
+    logging("Stopping","info")
 }
 def pause() {
-    sendEvent(name: "status", value: "pausing")
+    sendEvent(name: "status", value: "Pausing")
     runIn(15, poll)
     local_pause()
+    logging("Pausing","info")
 }
 def cancel() {
 	return off()
@@ -136,18 +147,18 @@ def dock() {
     sendEvent(name: "status", value: "docking")
     runIn(15, poll)
     return local_dock()
+    logging("Docking","info")
 }
 def resume() {
     sendEvent(name: "status", value: "resuming")
     runIn(15, poll)
     return local_resume()
+    logging("Resuming","info")
 }
 
 // API methods
 def parse(description) {
-	log.trace "GOT HERE"
     def msg = parseLanMessage(description)
-    log.trace "GOT MSG $msg"
     def headersAsString = msg.header // => headers as a string
     def headerMap = msg.headers      // => headers as a Map
     def body = msg.body              // => request body as a string
@@ -160,11 +171,9 @@ def parse(description) {
 /* local REST gw support */
 
 def lanEventHandler(evt) {
-	log.trace "GOT HERE"
     def description = evt.description
     def hub = evt?.hubId
 	def parsedEvent = parseLanMessage(description)
-	log.trace "RECEIVED LAN EVENT: $parsedEvent"
 }
 
 private local_get(path, cbk) {
@@ -173,7 +182,7 @@ private local_get(path, cbk) {
     
     try{
         httpGet([uri: "http://$roomba_host:$roomba_port$path"]){ resp -> 
-            if (debugOutput) log.debug "Response ${resp.data}"
+            logging("Response ${resp.data}","debug")
             "$cbk"(resp.data)
             if (resp.data) {
                 sendEvent(name: "APIstatus", value: "Online", displayed: false)
@@ -182,7 +191,7 @@ private local_get(path, cbk) {
             }
         }
     } catch (e) {
-        log.debug e
+        if (debugOutput) log.debug e
         if (state.battery < 15) {
             def roomba_value = "Offline - Low Battery"
             def roombaTile = roomba_tile(roomba_value)
@@ -191,6 +200,8 @@ private local_get(path, cbk) {
             def roombaTile = roomba_tile(roomba_value)
         }
         
+        if(!device.currentValue("status")) sendEvent(name: "status", value: "Not Ready")
+        sendEvent(name: "switch", value: "off")
         sendEvent(name: "APIstatus", value: "Device Unresponsive - Check Rest980 | Robot", displayed: false)
     }
 }
@@ -260,7 +271,7 @@ void local_poll_cbk(data) {
     def roomba_value = new_status(readyCode, current_phase, current_charge)
     def roombaTile = roomba_tile(roomba_value)
     
-    if (debugOutput) log.debug("Robot updates -- ${roomba_value}")
+    logging("Current Status: ${roomba_value}","info")
     
     //Set the state object
     if(roomba_value == "Cleaning") {
@@ -289,7 +300,8 @@ void local_poll_cbk(data) {
 
 private local_poll() {
 	local_get('/api/local/config/preferences', 'local_poll_cbk')
-    runIn(pollInterval, poll)
+    unschedule()
+    schedule("0 */${pollInterval} * ? * *", poll)
 }
 
 private local_start() {
@@ -312,9 +324,14 @@ private local_dock() {
 	local_get('/api/local/action/dock', 'local_dummy_cbk')
 }
 
-def logsOff(){
-    log.warn "debug logging disabled..."
+def debugLogsOff(){
+    logging("debug logging disabled...","warn")
     device.updateSetting("debugOutput",[value:"false",type:"bool"])
+}
+
+def infoLogsOff(){
+    logging("info logging disabled...","warn")
+    device.updateSetting("infoOutput",[value:"false",type:"bool"])
 }
 
 def roomba_tile(roomba_value) {
@@ -358,7 +375,29 @@ def roomba_tile(roomba_value) {
         else html +="<p ${f1}>Battery: ${state.battery}%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Bin: ${state.consumable}</center>"
     
     sendEvent(name: "RoombaTile", value: html, displayed: true)
-    if(logEnable) log.debug "Roomba Status of '${msg}' sent to dashboard"
+    logging("Status: '${msg}'; sent to dashboard","info")
+}
+
+def logging(data,type) {
+    data = "${device.displayName} - ${data}"
+    switch(type) {
+        case "info":
+        if (infoOutput) log.info data
+        break
+        case "debug":
+        if (debugOutput) log.debug data
+        break        
+        case  "warn":
+        log.warn data
+        break        
+        case "error":
+        log.error data
+        break
+        
+        default:
+            log.warn "${data} !Type not found!"
+        break
+    }
 }
 
 import java.text.SimpleDateFormat
