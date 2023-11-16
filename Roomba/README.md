@@ -70,7 +70,7 @@ WantedBy=multi-user.target
       <li>IP of Roomba local REST Gateway</li>
       <li>Port of Roomba local REST Gateway</li>
     </ul>
-  <li>Polling interval in seconds, default is 240 seconds (4 minutes)</li>
+  <li>Polling interval, default is 4 minutes</li>
 </ul>  
 
 <b>Roomba Scheduler Dashboard Tile configuration:</b>
